@@ -53,3 +53,12 @@ No environment variables or database are required for this demonstration.
 4. Validate against a blinded multidisciplinary reference panel.
 5. Complete legal, privacy, cybersecurity, clinical governance, and regulatory review.
 6. Keep all recommendations physician-confirmed and version-controlled.
+
+## Clinical logic corrections in this revision
+
+- Foraminal lesions now map to the exiting nerve root (for example, L3-4 foraminal stenosis maps to L3), while disc/lateral-recess lesions map to the traversing root.
+- A normal motor examination is no longer treated as missing information.
+- Bilateral symptoms with unilateral imaging are flagged as incompletely explained.
+- Sustained injection benefit is recognized as a reason to consider continued observation rather than automatically escalating to surgery.
+- Results are generated from a submitted snapshot. Editing the form afterward displays a stale-results warning until the user regenerates the summary.
+- Input validation, clinical checks, clearer red-flag wording, and keyboard focus states were added.
