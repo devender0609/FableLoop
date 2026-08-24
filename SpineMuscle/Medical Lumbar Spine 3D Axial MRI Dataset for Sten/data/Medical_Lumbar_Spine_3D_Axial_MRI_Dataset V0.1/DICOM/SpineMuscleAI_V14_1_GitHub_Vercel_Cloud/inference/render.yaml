@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: spinemuscle-inference
+    runtime: docker
+    dockerfilePath: ./inference/Dockerfile
+    dockerContext: ./inference
+    healthCheckPath: /health
+    envVars:
+      - key: ALLOWED_ORIGINS
+        value: "*"

@@ -1,0 +1,1 @@
+window.SPINE_INFERENCE_URL = window.SPINE_INFERENCE_URL || "";

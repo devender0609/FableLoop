@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>SpineMuscle AI</title>
+<link rel="stylesheet" href="/assets/styles.css"/>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="mark">SM</div>
+    <div><b>SpineMuscle AI</b><span> Lumbar MRI muscle analysis</span></div>
+  </div>
+  <div class="topmeta"><span class="cloudDot"></span> Cloud interface <span class="version">v14.1</span></div>
+</header>
+
+<main>
+<section class="hero">
+  <div>
+    <div class="eyebrow">RESEARCH MRI ANALYSIS</div>
+    <h1>Quantitative lumbar muscle assessment</h1>
+    <p>Upload one DICOM study. SpineMuscle converts the MRI, performs paraspinal muscle segmentation, provides quantitative measurements, and calculates a paper-aligned PVMQ after CSF confirmation.</p>
+  </div>
+  <div class="heroStatus">
+    <span>Workflow</span>
+    <b>DICOM → Segmentation → QC → Metrics → PVMQ</b>
+  </div>
+</section>
+
+<section class="paperCard">
+  <div>
+    <span class="paperLabel">METHOD ALIGNMENT</span>
+    <b>Based on the PVMQ workflow in the supplied manuscript</b>
+    <p>Axial T2 at L1/2–L4/5 • bilateral multifidus + erector spinae • four-level signal average • normalized to L3 CSF.</p>
+  </div>
+  <div class="paperCaution">Automated segmentation and level mapping remain research-QC steps and require validation.</div>
+</section>
+
+<nav class="workflowNav" aria-label="Analysis workflow">
+  <button class="workflowTab active" data-target="uploadCard" data-step="1">1 <span>Upload</span></button>
+  <button class="workflowTab locked" data-target="reviewCard" data-step="2" disabled>2 <span>Review</span></button>
+  <button class="workflowTab locked" data-target="metricsCard" data-step="3" disabled>3 <span>Measurements</span></button>
+  <button class="workflowTab locked" data-target="csfCard" data-step="4" disabled>4 <span>CSF reference</span></button>
+  <button class="workflowTab locked" data-target="resultCard" data-step="5" disabled>5 <span>Result</span></button>
+</nav>
+
+<section class="card" id="uploadCard">
+  <div class="sectionHead">
+    <div><div class="step">STEP 1</div><h2>Upload MRI study</h2></div>
+    <span class="badge neutral">Research prototype</span>
+  </div>
+
+  <div id="connectionBox" class="connectionBox">
+    <span class="statusDot"></span>
+    <div class="connectionTextWrap"><b>Checking inference service…</b><small id="connectionText">Please wait.</small></div>
+    <button id="configureApiBtn" class="linkLikeBtn" type="button">Configure</button>
+  </div>
+
+  <div id="apiSetupPanel" class="apiSetupPanel hidden">
+    <div>
+      <b>Inference service URL</b>
+      <p>Paste the public URL of the deployed SpineMuscle inference container. Example: <code>https://spinemuscle-inference.example.com</code></p>
+    </div>
+    <div class="apiSetupRow">
+      <input id="apiUrlInput" type="url" placeholder="https://your-inference-service.example.com"/>
+      <button id="saveApiBtn" type="button">Save & test</button>
+      <button id="clearApiBtn" type="button" class="tertiaryBtn">Clear</button>
+    </div>
+    <div id="apiSetupMessage" class="apiSetupMessage"></div>
+  </div>
+
+  <p class="muted">Select the complete DICOM folder. The browser sends the study directly to the configured inference service; Vercel hosts the interface only.</p>
+  <label class="drop">
+    <input id="folderInput" type="file" webkitdirectory multiple hidden>
+    <div><strong>Choose DICOM folder</strong><small>Include the complete lumbar MRI study.</small></div>
+    <span id="fileCount">No files selected</span>
+  </label>
+
+  <div class="analysisMode">
+    <div class="modeTitle">Analysis mode</div>
+    <label class="modeOption selected">
+      <input type="radio" name="analysisMode" value="pvmq_fast" checked>
+      <div><b>PVMQ-focused</b><span>Recommended • L1/2–L4/5 • 75% overlap • faster</span></div>
+    </label>
+    <label class="modeOption">
+      <input type="radio" name="analysisMode" value="full_quality">
+      <div><b>Full 5-level</b><span>Includes L5/S1 • 90% overlap • slower</span></div>
+    </label>
+  </div>
+
+  <div class="actionRow">
+    <button id="analyzeBtn" disabled>Analyze MRI</button>
+    <span class="timeHint">First cloud inference may be slower while model weights are downloaded/cached.</span>
+  </div>
+
+  <div id="progressPanel" class="progressPanel hidden">
+    <div class="progressHead"><b id="progressTitle">Uploading study</b><span id="progressPct">0%</span></div>
+    <div class="progressTrack"><div id="progressBar"></div></div>
+    <div class="stageRow">
+      <span id="stageUpload" class="stage active">Upload</span>
+      <span id="stageConvert" class="stage">Convert</span>
+      <span id="stageSegment" class="stage">Segment</span>
+      <span id="stageMetrics" class="stage">Metrics</span>
+      <span id="stageReady" class="stage">Ready</span>
+    </div>
+    <p id="progressMessage">Preparing upload…</p>
+  </div>
+
+  <div id="status" class="status"></div>
+
+  <details class="whyBox">
+    <summary>Why can analysis take a few minutes?</summary>
+    <p>This is real neural-network inference, not a simulated result. DICOM conversion is followed by MuscleMap segmentation. CPU inference can take tens of seconds per high-resolution stack. A GPU-backed inference host can substantially reduce this time.</p>
+  </details>
+</section>
+
+<section class="card hidden" id="reviewCard">
+  <div class="sectionHead">
+    <div><div class="step">STEP 2</div><h2>Segmentation review</h2></div>
+    <span class="badge warning">Level mapping provisional</span>
+  </div>
+  <p class="muted">Confirm that the colored contours follow the expected muscle boundaries before accepting quantitative findings.</p>
+  <div class="callout warningCallout" id="mappingText"></div>
+  <div id="overlayGrid" class="overlayGrid"></div>
+  <div class="legendNote"><b>Clinical interpretation:</b> PVMQ uses bilateral multifidus and erector spinae. Psoas and quadratus lumborum are shown as additional segmentation context when available.</div>
+</section>
+
+<section class="card hidden" id="metricsCard">
+  <div class="sectionHead">
+    <div><div class="step">STEP 3</div><h2>Quantitative muscle profile</h2></div>
+    <span class="badge success">Segmentation complete</span>
+  </div>
+
+  <div class="explainGrid">
+    <div><span>CSA</span><p>Cross-sectional area of the segmented muscle on the selected axial slice, reported in cm².</p></div>
+    <div><span>Mean SI</span><p>Mean raw T2 signal intensity inside the muscle mask. Raw SI is scanner-dependent and is not interpreted alone.</p></div>
+    <div><span>Four-level muscle SI</span><p>Equal-weight mean of right/left multifidus and erector spinae at provisional L1/2–L4/5. This is the PVMQ numerator.</p></div>
+  </div>
+
+  <div class="summaryStrip">
+    <div><span>Four-level muscle SI</span><b id="muscleSI">—</b></div>
+    <div><span>Levels analyzed</span><b id="levelsAnalyzed">—</b></div>
+    <div><span>Analysis mode</span><b id="modeUsed">—</b></div>
+  </div>
+
+  <div class="tableWrap" id="metricTable"></div>
+  <a id="metricsDownload" class="secondaryBtn" target="_blank" rel="noopener">Download measurements CSV</a>
+</section>
+
+<section class="card hidden" id="csfCard">
+  <div class="sectionHead">
+    <div><div class="step">STEP 4</div><h2>Confirm L3 CSF reference</h2></div>
+    <span class="badge neutral" id="csfState">Awaiting selection</span>
+  </div>
+
+  <div class="instructionBox">
+    <b>Where should I click?</b>
+    <p>Place the ROI completely inside homogeneous bright CSF within the central thecal sac. Avoid nerve roots, epidural fat, bone, and the CSF boundary.</p>
+  </div>
+
+  <div class="csfLayout">
+    <div class="csfPanel">
+      <div class="imgHeader"><span>L3/4 central axial crop</span><span class="dragHint">Click or drag to position ROI</span></div>
+      <div class="csfWrap" id="csfWrap">
+        <img id="csfImg" draggable="false" alt="L3 CSF selection image"/>
+        <div id="roiLayer" class="roiLayer"></div>
+      </div>
+      <div class="clickPrompt" id="cursorHint">Click or drag over homogeneous CSF. The MRI itself will not move.</div>
+    </div>
+
+    <div class="csfSide">
+      <div class="coordinateGrid">
+        <div class="miniMetric"><span>X coordinate</span><b id="xval">—</b></div>
+        <div class="miniMetric"><span>Y coordinate</span><b id="yval">—</b></div>
+      </div>
+
+      <div class="roiControl">
+        <label for="radiusSlider"><b>ROI radius</b><span id="radiusValue">3.0 mm</span></label>
+        <input id="radiusSlider" type="range" min="1.5" max="5.0" step="0.5" value="3.0"/>
+        <small>Keep the circle inside homogeneous CSF.</small>
+      </div>
+
+      <div class="selectionStatus" id="selectionStatus">No CSF ROI selected yet.</div>
+      <button id="calcBtn" disabled>Calculate PVMQ</button>
+      <button id="clearRoiBtn" class="tertiaryBtn" disabled>Clear ROI</button>
+    </div>
+  </div>
+</section>
+
+<section class="card hidden" id="resultCard">
+  <div class="sectionHead">
+    <div><div class="step">STEP 5</div><h2>PVMQ result</h2></div>
+    <span class="badge success">Research-QC calculated</span>
+  </div>
+
+  <div class="resultHero">
+    <div><span>Paper-aligned PVMQ</span><b id="pvmq">—</b><small>Four-level muscle signal ÷ L3 CSF signal</small></div>
+    <div class="resultExplanation">
+      <b>What does this mean?</b>
+      <p>PVMQ normalizes paravertebral muscle T2 signal to CSF signal. In the source cohort, higher PVMQ was associated with PJK. This prototype does not convert an individual value into a validated PJK probability or universal risk category.</p>
+    </div>
+  </div>
+
+  <div class="resultGrid">
+    <div><span>CSF mean SI</span><b id="csfMean">—</b></div>
+    <div><span>CSF coefficient of variation</span><b id="csfCv">—</b></div>
+    <div><span>CSF ROI QC</span><b id="csfQc">—</b></div>
+  </div>
+
+  <img id="csfRoiImg" class="roiPreview"/>
+
+  <div class="evidencePanel">
+    <span class="paperLabel">SOURCE STUDY CONTEXT</span>
+    <h3>How should this result be interpreted?</h3>
+    <div class="evidenceGrid">
+      <div><b>Source cohort</b><p>272 adult spinal deformity patients; 87 (32.0%) developed PJK.</p></div>
+      <div><b>Study association</b><p>The PJK group had higher PVMQ and fat infiltration, with lower CSA and FCSA.</p></div>
+      <div><b>App limitation</b><p>No universal externally validated PVMQ cutoff or patient-specific PJK probability is applied.</p></div>
+    </div>
+    <div class="interpretationText" id="interpretationText">Use this as a quantitative research marker together with segmentation QC and clinical context.</div>
+  </div>
+
+  <div class="methodCompare">
+    <h3>Method concordance</h3>
+    <div class="compareCols">
+      <div><b>Aligned with manuscript</b><p>Axial T2 • provisional L1/2–L4/5 • bilateral multifidus/erector spinae • four-level averaging • L3 CSF normalization.</p></div>
+      <div><b>Implementation differences</b><p>This prototype uses automated MuscleMap contours and automated/provisional stack-level mapping rather than validated expert PACS measurements.</p></div>
+    </div>
+  </div>
+
+  <div class="notice">Research prototype. Automated contours and lumbar level mapping require human confirmation and external validation before clinical use.</div>
+  <a id="pvmqDownload" class="secondaryBtn" target="_blank" rel="noopener">Download PVMQ CSV</a>
+</section>
+</main>
+
+<script src="/config.js"></script>
+<script src="/assets/app.js"></script>
+</body>
+</html>

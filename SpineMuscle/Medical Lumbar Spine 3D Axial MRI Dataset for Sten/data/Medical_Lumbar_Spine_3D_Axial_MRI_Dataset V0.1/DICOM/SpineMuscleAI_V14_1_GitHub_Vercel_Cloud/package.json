@@ -1,0 +1,11 @@
+{
+  "name": "spinemuscle-ai-v14",
+  "version": "14.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "devDependencies": {
+    "vercel": "latest"
+  }
+}
