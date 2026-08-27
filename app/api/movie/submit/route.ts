@@ -1,0 +1,4 @@
+import{NextRequest,NextResponse}from"next/server";
+import{falSubmit,modelFor}from"@/lib/fal";
+export const maxDuration=30;
+export async function POST(req:NextRequest){try{const{prompt,dialogue,seconds,format}=await req.json();if(!prompt||typeof prompt!=="string"||prompt.length>5000)return NextResponse.json({error:"Invalid cinematic prompt."},{status:400});const full=`${prompt}${dialogue?` Spoken dialogue: ${dialogue}. Precise natural lip synchronization.`:""}`;const data=await falSubmit(modelFor(null),{prompt:full,duration:String(Math.max(5,Math.min(10,Number(seconds)||5))),aspect_ratio:format==="9:16"?"9:16":"16:9",generate_audio:true,negative_prompt:"subtitles, captions, title cards, logos, watermarks, narration, deformed hands, duplicate people, identity change, costume change"});return NextResponse.json({requestId:data.request_id})}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Video submission failed."},{status:502})}}
