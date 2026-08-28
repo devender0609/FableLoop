@@ -10,12 +10,22 @@ export async function POST(req:NextRequest){
   if(!Array.isArray(segments)||segments.length<2||segments.length>20)return NextResponse.json({error:"Two or more visual scenes are required."},{status:400});
   if(segments.some(s=>!s||typeof s.url!=="string"||!s.url.startsWith("https://")||!["image","video"].includes(s.type)||!Number.isFinite(s.seconds)))return NextResponse.json({error:"One or more timeline scenes are invalid."},{status:400});
   let timestamp=0;
-  const tracks=segments.map((segment,index)=>{
+  const videoKeyframes:Array<{timestamp:number;duration:number;url:string}>=[];
+  const imageKeyframes:Array<{timestamp:number;duration:number;url:string}>=[];
+  for(const segment of segments){
    const duration=Math.max(1000,Math.min(10000,Math.round(segment.seconds*1000)));
-   const track={id:`scene-${index+1}`,type:segment.type,keyframes:[{timestamp,duration,url:segment.url}]};
+   const keyframe={timestamp,duration,url:segment.url};
+   if(segment.type==="video")videoKeyframes.push(keyframe);
+   else imageKeyframes.push(keyframe);
    timestamp+=duration;
-   return track;
-  });
+  }
+  // fal compose supports one track per media type. Each scene belongs on that
+  // track as a sequential keyframe; making every scene a separate track causes
+  // the provider to reject a movie containing more than one motion scene.
+  const tracks=[
+   ...(videoKeyframes.length?[{id:"motion-scenes",type:"video",keyframes:videoKeyframes}]:[]),
+   ...(imageKeyframes.length?[{id:"still-scenes",type:"image",keyframes:imageKeyframes}]:[])
+  ];
   const data=await falSubmit("fal-ai/ffmpeg-api/compose",{tracks});
   return NextResponse.json({requestId:data.request_id,statusUrl:data.status_url,responseUrl:data.response_url});
  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Hybrid movie assembly could not start."},{status:502})}
